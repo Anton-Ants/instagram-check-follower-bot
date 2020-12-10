@@ -17,6 +17,8 @@ const client = new Instagram({
   cookieStore
 })
 
+console.log('Bot started...');
+
 bot.start(ctx => ctx.reply(`
   Hi ${ctx.from.first_name}!
   Here you can check, which of your subscribers does not follow you back.
@@ -44,59 +46,95 @@ bot.on('text', async (ctx) => {
         return
       }
 
+      const loadingInPercent = function(a, b) {
+          return `${Math.floor(a * 100 / b)}%`;
+      };
+
       const userId = user.id
       const followingsCount = user.edge_follow.count
       const followersCount = user.edge_followed_by.count
 
-      console.log([userId, followingsCount, followersCount])
-
       let followings = []
       let followers = []
 
-      const countPage = 30;
+      const countUsersOnPage = 30;
+      const totalCountFollowersAndFollowings = followingsCount + followersCount
+
+      const msgInfo = await ctx.reply('0%')
 
       const getFollowingsFirstList = await client.getFollowings({
         userId: userId,
-        first: countPage
+        first: countUsersOnPage
       })
       let has_next_page = getFollowingsFirstList.page_info.has_next_page
       let end_cursor = getFollowingsFirstList.page_info.end_cursor
 
       followings = followings.concat(getFollowingsFirstList.data)
+      let currentCountFollowersAndFollowings = followings.length + followers.length;
+      ctx.telegram.editMessageText(
+        msgInfo.chat.id,
+        msgInfo.message_id,
+        msgInfo.message_id,
+        loadingInPercent(currentCountFollowersAndFollowings,totalCountFollowersAndFollowings),
+      )
 
       while (has_next_page) {
 
         const getFollowings = await client.getFollowings({
           userId: userId,
-          first: countPage,
+          first: countUsersOnPage,
           after: end_cursor
         })
 
         followings = followings.concat(getFollowings.data)
         has_next_page = getFollowings.page_info.has_next_page
         end_cursor = getFollowings.page_info.end_cursor
+
+        currentCountFollowersAndFollowings = followings.length + followers.length
+
+        ctx.telegram.editMessageText(
+          msgInfo.chat.id,
+          msgInfo.message_id,
+          msgInfo.message_id,
+          loadingInPercent(currentCountFollowersAndFollowings,totalCountFollowersAndFollowings),
+        )
       }
 
       const getFollowersFirstList = await client.getFollowers({
         userId: userId,
-        first: countPage
+        first: countUsersOnPage
       })
       has_next_page = getFollowersFirstList.page_info.has_next_page
       end_cursor = getFollowersFirstList.page_info.end_cursor
 
       followers = followers.concat(getFollowersFirstList.data)
+      currentCountFollowersAndFollowings = followings.length + followers.length
+
+      ctx.telegram.editMessageText(
+        msgInfo.chat.id,
+        msgInfo.message_id,
+        msgInfo.message_id,
+        loadingInPercent(currentCountFollowersAndFollowings,totalCountFollowersAndFollowings),
+      )
 
       while (has_next_page) {
 
         const getFollowers = await client.getFollowers({
           userId: userId,
-          first: countPage,
+          first: countUsersOnPage,
           after: end_cursor
         })
 
         followers = followers.concat(getFollowers.data)
         has_next_page = getFollowers.page_info.has_next_page
         end_cursor = getFollowers.page_info.end_cursor
+        currentCountFollowersAndFollowings = followings.length + followers.length
+        ctx.telegram.editMessageText(
+          msgInfo.chat.id,
+          msgInfo.message_id,
+          msgInfo.message_id,
+          loadingInPercent(currentCountFollowersAndFollowings,totalCountFollowersAndFollowings),
+        )
       }
 
       console.log({
